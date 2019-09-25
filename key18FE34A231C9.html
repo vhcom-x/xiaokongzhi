@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://apps.bdimg.com/libs/jquerymobile/1.4.5/jquery.mobile-1.4.5.min.css">
+        <script src="https://cdn.bootcss.com/paho-mqtt/1.0.2/mqttws31.min.js"></script>
+        <script src="https://apps.bdimg.com/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="https://apps.bdimg.com/libs/jquerymobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+    </head>
+    
+    <body>
+        <!--第一页面-->
+        <div data-role="page" id="pageone">
+            <!--头部-->
+            <div data-role="header">
+                	<h6 id="status">控制面板</h6>
+
+            </div>
+            <!--内容-->
+            <div data-role="content">
+                <ul data-role="listview">
+                    <li><span> LOG：<span id="log">LOG</span></span>
+                    </li>
+                    <li><span> 主题：<span id="topic">主题</span></span>
+                    </li>
+                    <li><span> 消息：<span id="msg">消息</span></span>
+                    </li>
+                    <li>
+                        <fieldset data-role="controlgroup" data-type="horizontal">
+                            <input type="checkbox" id="key_ledD0">
+                            <label for="key_ledD0" id="lable_ledD0">灭</label>
+                            <input type="checkbox" id="key_ledD1">
+                            <label for="key_ledD1" id="lable_ledD1">灭</label>
+                            <input type="checkbox" id="key_ledD2">
+                            <label for="key_ledD2" id="lable_ledD2">灭</label>
+                            <input type="checkbox" id="key_ledD3">
+                            <label for="key_ledD3" id="lable_ledD3">灭</label>
+                            <input type="checkbox" id="key_ledD4">
+                            <label for="key_ledD4" id="lable_ledD4">灭</label>
+                        </fieldset>
+                    </li>
+                    <li>
+                        <fieldset data-role="controlgroup" data-type="horizontal">
+                            <input type="checkbox" id="key_ledD5">
+                            <label for="key_ledD5" id="lable_ledD5">灭</label>
+                            <input type="checkbox" id="key_ledD6">
+                            <label for="key_ledD6" id="lable_ledD6">灭</label>
+                            <input type="checkbox" id="key_ledD7">
+                            <label for="key_ledD7" id="lable_ledD7">灭</label>
+                            <input type="checkbox" id="key_ledD8">
+                            <label for="key_ledD8" id="lable_ledD8">灭</label>
+                        </fieldset>
+                    </li>
+                    <li></li>
+                </ul>
+            </div>
+            <!--底部-->
+            <div data-role="footer">
+                	<h1>控制面板</h1>
+
+            </div>
+        </div>
+        <!--script代码-->
+        <!--script代码-->
+        <!--script代码-->
+        <!--script代码-->
+        <script>
+        //变量
+        let url = "127.0.0.1";
+        let clientId = "18FE34A231C9";
+        let un = "esp8266";
+        let pw = "esp8266";
+        let topic = clientId + "/#";
+        let msg = "";
+
+
+
+         //设置参数
+        var connectOptions = {
+            userName: un,
+            password: pw,
+
+            onSuccess: onConnect
+        };
+
+         //随机数
+
+        function random(lower, upper) {
+            return Math.floor(Math.random() * (upper - lower + 1)) + lower;
+        }
+
+         // client = new Paho.MQTT.Client(url, Number(61614), ""+random(1,100)); //建立客户端实例
+        client = new Paho.MQTT.Client(url, Number(8083), "ws" + random(1, 100)); //建立客户端实例 
+        client.connect(connectOptions); //连接服务器并注册连接成功处理事件  
+        client.onConnectionLost = onConnectionLost; //注册连接断开处理事件  
+        client.onMessageArrived = onMessageArrived; //注册消息接收处理事件  
+
+
+         // 连接成功
+
+        function onConnect() {
+            $("#log").text("连接成功");
+            $("li").css("background-color", "rgba(0,255,0,0.3)");
+            client.subscribe(topic); //订阅
+
+        }
+
+         // 连接断开
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                $("li").css("background-color", "rgba(255,0,0,0.3)");
+                console.log("onConnectionLost:" + responseObject.errorMessage);
+                console.log("连接已断开");
+                $("#log").text("已经断开");
+                client.connect(connectOptions); //连接服务器并注册连接成功处理事件 
+            }
+        }
+
+
+         //指令
+
+        function cmd(pin, flag) {
+            msg = JSON.stringify({
+                "msg": flag
+            });
+            //主题=前缀+mac+pin
+            topic = clientId + "/function/" + pin;
+            client.send(topic, msg, 0, true);
+        }
+
+
+        function keyLisener(pin) {
+            // 打开关闭电灯
+            $("#key_led" + pin).change(function () {
+                if ($("#lable_led" + pin).text() == "亮") {
+                    cmd(pin, "off");
+                }
+                if ($("#lable_led" + pin).text() == "灭") {
+                    cmd(pin, "on");
+                }
+
+
+            });
+        }
+        
+        
+
+function pinList(){
+                var i;
+        var PINN=["D0","D1","D2","D3","D4","D5","D6","D7","D8"];
+       for (i=0;i<PINN.length;i++){
+            keyLisener(PINN[i]);
+        }
+}
+
+pinList();
+
+
+
+
+         // 接收消息
+
+        function onMessageArrived(message) {
+            console.log("收到消息:" + message.payloadString + message.destinationName);
+            $("#topic").text(message.destinationName);
+            $("#msg").text(message.payloadString);
+            // 处理消息
+
+                      var i;
+        var PINN=["D0","D1","D2","D3","D4","D5","D6","D7","D8"];
+       for (i=0;i<PINN.length;i++){
+             parseData(message.destinationName, message.payloadString, PINN[i]);
+        }
+         
+        }
+             
+        
+        
+
+        
+
+
+
+         // 处理消息
+
+        function parseData(topic, msg, pin) {
+            try {
+                var obj = JSON.parse(msg);
+                // console.log(obj.msg);
+
+
+                if (topic == clientId + "/function/" + pin) {
+                    if (obj.msg == "on") {
+                        css_led(pin, true);
+                    }
+                    if (obj.msg == "off") {
+                        css_led(pin, false);
+                    }
+                }
+
+
+                 if (topic.match("status")) {
+                    if (obj.msg == "online") {
+                        $("#status").text(clientId + "online");
+                        $("#status").css("color", "rgb(0,255,0)");
+                    }
+                    if (obj.msg == "offline") {
+                        $("#status").text(clientId + "offline");
+                        $("#status").css("color", "rgb(255,0,0)");
+                    }
+                }
+
+
+
+            } catch (e) {}
+
+        }
+
+
+
+
+
+         //状态颜色样式
+
+        function css_led(pin, flag) {
+            if (flag) {
+                $("#key_led" + pin).prop("checked", true);
+                $("#lable_led" + pin).text("亮");
+                $("#lable_led" + pin).css("color", "rgb(0,255,0)");
+            }
+            if (!flag) {
+                $("#key_led" + pin).prop("checked", false);
+                $("#lable_led" + pin).text("灭");
+                $("#lable_led" + pin).css("color", "rgb(255,0,0)");
+            }
+
+
+
+        }
+        </script>
+    </body>
+
+</html>
